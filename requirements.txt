@@ -1,0 +1,19 @@
+# --- API / core ---
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+pydantic-settings==2.6.1
+SQLAlchemy==2.0.36
+psycopg[binary]==3.2.3
+httpx==0.28.1
+numpy==2.2.0
+
+# --- dashboard ---
+streamlit==1.40.2
+pandas==2.2.3
+
+# --- simulation / SDK (OpenAI optional, used for --live traffic) ---
+openai==1.57.4
+
+# --- testing ---
+pytest==8.3.4
