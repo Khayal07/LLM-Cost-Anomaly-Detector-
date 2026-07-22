@@ -126,6 +126,66 @@ monitor.log_call(provider="openai", model="gpt-4o-mini",
 `wrap_anthropic` does the same for the Anthropic client. Logging is best-effort:
 a logging failure never breaks your LLM call.
 
+## Integrate into your own app or website
+
+Point your app at a running detector instance and log every LLM call. Three ways,
+from least to most integrated:
+
+### 1. Python — auto-log an OpenAI/Anthropic client (zero call-site changes)
+
+Copy the `sdk/` folder into your project (it only needs `httpx`), then wrap your
+client once:
+
+```python
+from openai import OpenAI
+from sdk import CostMonitorClient, wrap_openai
+
+monitor = CostMonitorClient("https://your-detector.example.com", api_key="YOUR_API_KEY")
+client = wrap_openai(OpenAI(), monitor, endpoint="/summarize", caller="user-123")
+
+# use the client exactly as before — every call is logged automatically
+client.chat.completions.create(model="gpt-4o-mini", messages=[...])
+```
+
+`wrap_anthropic(anthropic_client, monitor, ...)` does the same for Anthropic.
+
+### 2. Python — log manually where you already have usage numbers
+
+```python
+monitor.log_call(
+    provider="openai", model="gpt-4o-mini",
+    tokens_in=1200, tokens_out=300,
+    endpoint="/summarize", caller="user-123",
+    latency_ms=480,                 # optional
+    prompt=messages,                # optional; used for loop detection
+)
+```
+
+### 3. Any language / framework — POST to `/log`
+
+No SDK needed. After each LLM call, fire one HTTP request (Node/JS shown; works
+from Go, Ruby, PHP, a Cloudflare Worker, anywhere):
+
+```js
+await fetch("https://your-detector.example.com/log", {
+  method: "POST",
+  headers: { "Content-Type": "application/json", "X-API-Key": "YOUR_API_KEY" },
+  body: JSON.stringify({
+    provider: "openai", model: "gpt-4o-mini",
+    endpoint: "/summarize", caller: "user-123",
+    tokens_in: 1200, tokens_out: 300, latency_ms: 480,
+  }),
+});
+```
+
+`cost_usd` is optional — omit it and the server computes it from the model. Send
+`prompt` (string or messages array) to enable loop detection, or precompute
+`request_hash` yourself. Logging should be **fire-and-forget**: never block or
+fail your user's request on it.
+
+Then read anomalies back however you like: poll `GET /incidents`, wire a Slack
+webhook (`SLACK_WEBHOOK_URL`), or watch the dashboard.
+
 ## API reference
 
 | Method | Path | Purpose |
@@ -176,12 +236,54 @@ pytest -q
 
 ## Configuration
 
-All detection thresholds are environment-driven (see `.env.example`) — tune them
-without code changes:
+Everything is environment-driven (see `.env.example`) — no code changes to tune.
 
-`Z_SCORE_THRESHOLD`, `IQR_MULTIPLIER`, `MIN_SAMPLES`, `LOOP_COUNT_THRESHOLD`,
-`LOOP_WINDOW_SECONDS`, `COST_SPIKE_BUCKET_SECONDS`, `BASELINE_WINDOW_SECONDS`,
-`TOKEN_GROWTH_RATIO`, `MIN_INCIDENT_COST_USD`, `COOLDOWN_SECONDS`.
+| Variable | Default | Purpose |
+|---|---|---|
+| `DATABASE_URL` | local Postgres | SQLAlchemy connection string |
+| `API_URL` | `http://localhost:8000` | where the dashboard finds the API |
+| `API_KEY` | _(empty)_ | when set, all data endpoints require `X-API-Key` |
+| `OPENAI_API_KEY` | _(empty)_ | only for `--live` synthetic traffic |
+| `SLACK_WEBHOOK_URL` | _(empty)_ | push incidents to Slack when set |
+| `Z_SCORE_THRESHOLD` | `3.5` | outlier sensitivity (cost spike / outlier) |
+| `IQR_MULTIPLIER` | `1.5` | Tukey-fence width for outliers |
+| `MIN_SAMPLES` | `8` | min baseline samples before a detector fires |
+| `LOOP_COUNT_THRESHOLD` | `10` | identical calls that count as a loop |
+| `LOOP_WINDOW_SECONDS` | `60` | window for loop counting |
+| `COST_SPIKE_BUCKET_SECONDS` | `60` | time bucket for spike aggregation |
+| `BASELINE_WINDOW_SECONDS` | `3600` | rolling baseline lookback |
+| `TOKEN_GROWTH_RATIO` | `4.0` | tokens vs median that counts as prompt bloat |
+| `MIN_INCIDENT_COST_USD` | `0.05` | materiality floor for cost incidents |
+| `COOLDOWN_SECONDS` | `300` | suppress duplicate incidents per scope+type |
+
+## Deployment
+
+The stack is container-first:
+
+```bash
+cp .env.example .env
+# set API_KEY to a strong secret, point DATABASE_URL at managed Postgres,
+# optionally set SLACK_WEBHOOK_URL
+docker-compose up --build -d
+```
+
+Production checklist:
+
+- **Set `API_KEY`.** With it configured, every data endpoint requires the
+  `X-API-Key` header (the SDK and dashboard pick it up from env automatically).
+- **Terminate TLS** at a reverse proxy (nginx / Caddy / cloud LB) in front of the
+  API and dashboard; don't expose them plaintext.
+- **Use managed Postgres** (RDS / Cloud SQL / Supabase) via `DATABASE_URL` instead
+  of the bundled container for durability and backups.
+- **Secrets** come from the environment at runtime; `.dockerignore` keeps `.env`
+  out of the image. Prefer your platform's secret store over a committed file.
+- **Scale** the API horizontally (multiple `uvicorn`/gunicorn workers or replicas)
+  behind the load balancer; state lives entirely in Postgres. The `api` service
+  has a `/healthz` healthcheck for orchestrators.
+- **Restrict the dashboard** — it's an internal tool; keep it behind auth/VPN.
+
+The same image runs both services (different `command`s), so it deploys cleanly to
+anything that speaks Docker: Compose, ECS, Cloud Run, Fly.io, Kubernetes.
 
 ## Project structure
 
