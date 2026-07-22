@@ -16,6 +16,11 @@ import pytest
 _TMP_DB = Path(tempfile.gettempdir()) / "costmonitor_test.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{_TMP_DB.as_posix()}"
 
+# Keep the suite hermetic: never inherit a developer's local API_KEY / webhook
+# from .env. Tests that exercise auth opt in explicitly via monkeypatch.
+os.environ["API_KEY"] = ""
+os.environ["SLACK_WEBHOOK_URL"] = ""
+
 
 @pytest.fixture()
 def db_session():
