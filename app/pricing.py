@@ -34,10 +34,14 @@ def _lookup(model: str) -> tuple[float, float]:
     """Resolve a price, tolerating version suffixes like ``-20241022``."""
     if model in PRICES:
         return PRICES[model]
-    for name, price in PRICES.items():
-        if model.startswith(name):
-            return price
-    return DEFAULT_PRICE
+    # Longest matching prefix wins, so a versioned id like
+    # "gpt-4o-mini-2024-07-18" resolves to "gpt-4o-mini", not the shorter
+    # (and pricier) "gpt-4o".
+    best: str | None = None
+    for name in PRICES:
+        if model.startswith(name) and (best is None or len(name) > len(best)):
+            best = name
+    return PRICES[best] if best else DEFAULT_PRICE
 
 
 def compute_cost(model: str, tokens_in: int, tokens_out: int) -> float:
