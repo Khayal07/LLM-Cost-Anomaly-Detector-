@@ -1,0 +1,27 @@
+# Keep secrets and local cruft out of the image (config is injected at runtime).
+.env
+*.env
+!.env.example
+
+.git/
+.gitignore
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+tests/
+eval/*.md
+eval/*.json
+*.db
+*.sqlite3
+
+.playwright-mcp/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+README.md
