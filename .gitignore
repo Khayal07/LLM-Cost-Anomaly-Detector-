@@ -32,6 +32,9 @@ eval/*.md
 eval/*.json
 !eval/.gitkeep
 
+# --- browser tooling output ---
+.playwright-mcp/
+
 # --- editor / OS junk ---
 .vscode/
 .idea/
