@@ -33,7 +33,10 @@ class Settings(BaseSettings):
     loop_window_seconds: int = 60
     cost_spike_bucket_seconds: int = 60
     baseline_window_seconds: int = 3600
-    token_growth_ratio: float = 3.0
+    token_growth_ratio: float = 4.0
+    # Materiality floor: don't raise cost incidents for trivial dollar amounts,
+    # even if they're statistical outliers (a $0.009 call isn't worth paging on).
+    min_incident_cost_usd: float = 0.05
     cooldown_seconds: int = 300
 
 

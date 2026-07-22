@@ -49,6 +49,8 @@ class CostSpikeDetector(BaseDetector):
         current_sum = sums.pop(current_key, 0.0)
         hist = list(sums.values())
 
+        if current_sum < s.min_incident_cost_usd:
+            return None  # materiality floor: ignore trivial-dollar buckets
         mean, std, n = mean_std(hist)
         if n < s.min_samples:
             return None
@@ -186,6 +188,8 @@ class CostOutlierDetector(BaseDetector):
             return None
 
         cost = float(rec.cost_usd)
+        if cost < s.min_incident_cost_usd:
+            return None  # materiality floor: ignore trivial-dollar calls
         mean, std, n = mean_std(vals)
         z = zscore(cost, mean, std)
         _, upper = iqr_bounds(vals, s.iqr_multiplier)
