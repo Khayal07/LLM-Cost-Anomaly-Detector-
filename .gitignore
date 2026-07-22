@@ -23,6 +23,10 @@ env/
 .coverage
 htmlcov/
 
+# --- local sqlite databases ---
+*.db
+*.sqlite3
+
 # --- eval output (generated) ---
 eval/*.md
 eval/*.json

@@ -83,3 +83,24 @@ class IncidentOut(BaseModel):
 class IncidentDetail(BaseModel):
     incident: IncidentOut
     surrounding_records: list[CallRecordOut]
+
+
+class TimeBucketPoint(BaseModel):
+    bucket: datetime
+    cost_usd: float
+    calls: int
+    tokens: int
+
+
+class GroupCost(BaseModel):
+    key: str
+    cost_usd: float
+    calls: int
+    tokens: int
+
+
+class StatsSummary(BaseModel):
+    total_cost_usd: float
+    total_calls: int
+    total_tokens: int
+    open_incidents: int

@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.db import init_db
-from app.routers import incidents, ingest
+from app.routers import incidents, ingest, stats
 
 
 @asynccontextmanager
@@ -24,6 +24,7 @@ app = FastAPI(
 
 app.include_router(ingest.router)
 app.include_router(incidents.router)
+app.include_router(stats.router)
 
 
 @app.get("/healthz", tags=["meta"])
