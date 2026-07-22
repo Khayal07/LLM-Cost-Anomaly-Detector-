@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     # --- secrets ---
     openai_api_key: str | None = None
     slack_webhook_url: str | None = None
+    # Optional shared secret. When set, all data endpoints require the
+    # `X-API-Key` header; when empty, auth is disabled (dev-friendly default).
+    api_key: str | None = None
 
     # --- detection thresholds ---
     z_score_threshold: float = 3.5

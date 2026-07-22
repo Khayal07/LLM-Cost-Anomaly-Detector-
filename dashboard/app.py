@@ -15,6 +15,8 @@ import pandas as pd
 import streamlit as st
 
 API_URL = os.environ.get("API_URL", "http://localhost:8000").rstrip("/")
+API_KEY = os.environ.get("API_KEY") or None
+_HEADERS = {"X-API-Key": API_KEY} if API_KEY else {}
 
 st.set_page_config(page_title="LLM Cost Anomaly Detector", layout="wide")
 
@@ -30,7 +32,7 @@ SEVERITY_ICON = {"high": "🔴", "medium": "🟠", "low": "🟡"}
 
 def _get(path: str, params: dict | None = None):
     try:
-        resp = httpx.get(f"{API_URL}{path}", params=params, timeout=10.0)
+        resp = httpx.get(f"{API_URL}{path}", params=params, headers=_HEADERS, timeout=10.0)
         resp.raise_for_status()
         return resp.json()
     except Exception as exc:  # noqa: BLE001 - surface API errors in the UI

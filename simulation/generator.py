@@ -250,7 +250,7 @@ def _live_usage(client, prompt_len: int) -> tuple[int, int, int]:
     return usage.prompt_tokens, usage.completion_tokens, latency
 
 
-def send(api_url: str, seed: int, live: bool) -> None:
+def send(api_url: str, seed: int, live: bool, api_key: str | None = None) -> None:
     import httpx
 
     scenario = generate(seed)
@@ -265,7 +265,8 @@ def send(api_url: str, seed: int, live: bool) -> None:
         oa_client = OpenAI()
         print("Live mode: token counts and latency will come from real OpenAI calls.")
 
-    with httpx.Client(base_url=api_url.rstrip("/"), timeout=30.0) as http:
+    headers = {"X-API-Key": api_key} if api_key else {}
+    with httpx.Client(base_url=api_url.rstrip("/"), timeout=30.0, headers=headers) as http:
         sent = 0
         for rec in scenario.records:
             payload = to_payload(rec)
@@ -292,7 +293,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.send:
-        send(args.api, args.seed, args.live)
+        send(args.api, args.seed, args.live, api_key=os.environ.get("API_KEY") or None)
     else:
         scenario = generate(args.seed)
         print(f"Generated {len(scenario.records)} records.")

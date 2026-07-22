@@ -11,7 +11,7 @@ from typing import Any
 
 import httpx
 
-from app.hashing import request_hash
+from sdk.hashing import request_hash
 
 __all__ = ["CostMonitorClient", "log_call", "request_hash"]
 
@@ -21,12 +21,14 @@ class CostMonitorClient:
         self,
         base_url: str = "http://localhost:8000",
         *,
+        api_key: str | None = None,
         timeout: float = 5.0,
         client: httpx.Client | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self._client = client or httpx.Client(base_url=self.base_url, timeout=timeout)
         self._owns_client = client is None
+        self._headers = {"X-API-Key": api_key} if api_key else {}
 
     def log_call(
         self,
@@ -68,7 +70,7 @@ class CostMonitorClient:
             payload["ts"] = ts.isoformat()
 
         url = "/log" if self._client.base_url else f"{self.base_url}/log"
-        resp = self._client.post(url, json=payload)
+        resp = self._client.post(url, json=payload, headers=self._headers)
         resp.raise_for_status()
         return resp.json()
 
@@ -83,7 +85,12 @@ class CostMonitorClient:
         self.close()
 
 
-def log_call(base_url: str = "http://localhost:8000", **kwargs: Any) -> dict[str, Any]:
+def log_call(
+    base_url: str = "http://localhost:8000",
+    *,
+    api_key: str | None = None,
+    **kwargs: Any,
+) -> dict[str, Any]:
     """One-shot convenience: open a client, log a single call, close it."""
-    with CostMonitorClient(base_url) as client:
+    with CostMonitorClient(base_url, api_key=api_key) as client:
         return client.log_call(**kwargs)
