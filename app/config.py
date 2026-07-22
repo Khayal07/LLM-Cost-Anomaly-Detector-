@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     slack_webhook_url: str | None = None
 
     # --- detection thresholds ---
-    z_score_threshold: float = 3.0
+    z_score_threshold: float = 3.5
     iqr_multiplier: float = 1.5
     min_samples: int = 8
     loop_count_threshold: int = 10
